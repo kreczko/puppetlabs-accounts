@@ -58,11 +58,21 @@ define accounts::user(
   }
 
   if $uid != undef {
-    validate_re($uid, '^\d+$')
+    if is_string($uid) {
+      validate_re($uid, '^\d+$')
+    }
+    else {
+      validate_integer($uid)
+    }
   }
 
   if $gid != undef {
-    validate_re($gid, '^\d+$')
+    if is_string($gid) {
+      validate_re($gid, '^\d+$')
+    }
+    else {
+      validate_integer($gid)
+    }
     $_gid = $gid
   } else {
     $_gid = $name
