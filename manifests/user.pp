@@ -6,7 +6,7 @@
 # [*sshkeys*] List of ssh public keys to be associated with the
 # user.
 # [*managehome*] Whether the home directory should be removed with accounts
-#
+# [*create_group*] Wheter the primary group should be created
 define accounts::user(
   $ensure               = 'present',
   $shell                = '/bin/bash',
@@ -24,6 +24,7 @@ define accounts::user(
   $managehome           = true,
   $bashrc_content       = undef,
   $bash_profile_content = undef,
+  $create_group         = true,
 ) {
   validate_re($ensure, '^present$|^absent$')
   validate_bool($locked, $managehome, $purge_sshkeys)
@@ -109,15 +110,24 @@ define accounts::user(
   }
 
   # use $gid instead of $_gid since `gid` in group can only take a number
-  group { $name:
-    ensure => $ensure,
-    gid    => $gid,
+  if $create_group {
+    group { $name:
+      ensure => $ensure,
+      gid    => $gid,
+    }
+
+    if $ensure == 'present' {
+      Group[$name] -> User[$name]
+    } else {
+      User[$name] -> Group[$name]
+    }
   }
 
-  if $ensure == 'present' {
-    Group[$name] -> User[$name]
-  } else {
-    User[$name] -> Group[$name]
+  if $create_group {
+    $required_for_home = [ User[$name], Group[$name] ]
+  }
+  else {
+    $required_for_home = [ User[$name] ]
   }
 
   accounts::home_dir { $home_real:
@@ -128,6 +138,6 @@ define accounts::user(
     bash_profile_content => $bash_profile_content,
     user                 => $name,
     sshkeys              => $sshkeys,
-    require              => [ User[$name], Group[$name] ],
+    require              => $required_for_home,
   }
 }
